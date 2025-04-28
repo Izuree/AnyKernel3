@@ -15,13 +15,13 @@ do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=munch
-device.name2=munchin
+device.name1=apollo
+device.name2=apollon
 supported.versions=
 '; }
 
-is_apollo=0;
-is_munch=1;
+is_apollo=1;
+is_munch=0;
 is_alioth=0;
 
 block=/dev/block/bootdevice/by-name/boot;
@@ -63,8 +63,8 @@ case "$ZIPFILE" in
   ;;
 esac
 ui_print "--> Patching KernelSU cmdline...";
-mv *-Image $home/Image;
-rm *-Image;
+mv *-Image.gz $home/Image.gz;
+rm *-Image.gz;
 ui_print " ";
 
 case "$ZIPFILE" in
