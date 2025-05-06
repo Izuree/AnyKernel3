@@ -43,59 +43,47 @@ fi;
 # set permissions/ownership for included ramdisk files
 set_perm_recursive 0 0 750 750 $ramdisk/*;
 
-ui_print " ";
-ui_print "-> Kernel Naming :";
-ui_print "--> "$ZIPFILE" ";
-ui_print " ";
-
 case "$ZIPFILE" in
   *noksu*|*NOKSU*)
-    ui_print "-> Non-KernelSU variant selected,";
     E404_KSU=0;
   ;;
   *ksu*|*KSU*)
-    ui_print "-> KernelSU variant selected,";
     E404_KSU=1;
   ;;
   *)
-    ui_print "-> KernelSU is not specified !!!";
     E404_KSU=0;
   ;;
 esac
 ui_print "--> Patching KernelSU cmdline...";
 mv *-Image.gz $home/Image.gz;
 rm *-Image.gz;
-ui_print " ";
 
 case "$ZIPFILE" in
   *miui*|*MIUI*|*hyper*|*HYPER*)
-    ui_print "-> MIUI/HyperOS variant selected,";
     ui_print "--> Patching MIUI/HyperOS kernel cmdline...";
     E404_ROM_TYPE=2;
   ;;
   *aosp*|*AOSP*|*clo*|*CLO*)
-    ui_print "-> AOSP/CLO variant selected,";
     ui_print "--> Patching AOSP/CLO kernel cmdline... ";
     E404_ROM_TYPE=1;
   ;;
   *)
-    ui_print "-> ROM is not specified !!!";
     ui_print "--> Patching default kernel cmdline... ";
     E404_ROM_TYPE=0;
   ;;
 esac
-ui_print " ";
 
 case "$ZIPFILE" in
   *effcpu*|*EFFCPU*)
-    ui_print "-> Efficient CPUFreq variant selected,";
     ui_print "--> Patching efficient CPUFreq cmdline...";
     E404_EFFCPU=1;
   ;;
-  *)
-    ui_print "-> Normal CPUFreq variant selected,";
-    ui_print "--> Patching normal CPUFreq cmdline...";
-    E404_EFFCPU=0;
+esac
+
+case "$ZIPFILE" in
+  *ir*|*IR*)
+    ui_print "--> Patching IR Blaster cmdline...";
+    E404_IR=2;
   ;;
 esac
 
@@ -131,6 +119,12 @@ if [ "$E404_EFFCPU" == "1" ]; then
   patch_cmdline "e404_effcpu" "e404_effcpu=1";
 else
   patch_cmdline "e404_effcpu" "e404_effcpu=0";
+fi
+
+if [ "$E404_IR" == "2" ]; then
+  patch_cmdline "e404_effcpu" "e404_ir_type=2";
+else
+  patch_cmdline "e404_effcpu" "e404_ir_type=1";
 fi
 
 # migrate from /overlay to /overlay.d to enable SAR Magisk
