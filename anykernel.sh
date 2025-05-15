@@ -1,12 +1,7 @@
 # AnyKernel3 Ramdisk Mod Script
 # osm0sis @ xda-developers
 
-
 # E404 kernel custom installer by 113
-
-# What'supp kangers ? looking for what i am cooking ?
-# Anything you do or if you are taking a peek and going to use it
-# PUT A FUCKING PROPER CREDITS !!!
 
 properties() { '
 kernel.string=E404 Kernel by Project 113
@@ -15,14 +10,16 @@ do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=apollo
-device.name2=apollon
+device.name1=munch
+device.name2=munchin
 supported.versions=
 '; }
 
-is_apollo=1;
-is_munch=0;
+is_apollo=0;
+is_munch=1;
 is_alioth=0;
+
+e404_args="";
 
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
@@ -35,119 +32,239 @@ elif [ $is_alioth == "1" ]; then
   is_slot_device=1;
 fi;
 
-## AnyKernel methods (DO NOT CHANGE)
-# import patching functions/variables - see for reference
 . tools/ak3-core.sh;
-
-## AnyKernel file attributes
-# set permissions/ownership for included ramdisk files
 set_perm_recursive 0 0 750 750 $ramdisk/*;
 
-case "$ZIPFILE" in
-  *noksu*|*NOKSU*)
-    E404_KSU=0;
-  ;;
-  *ksu*|*KSU*)
-    E404_KSU=1;
-  ;;
-  *)
-    E404_KSU=0;
-  ;;
-esac
-ui_print "--> Patching KernelSU cmdline...";
-mv *-Image.gz $home/Image.gz;
-rm *-Image.gz;
+ui_print " ";
 
-case "$ZIPFILE" in
-  *miui*|*MIUI*|*hyper*|*HYPER*)
-    ui_print "--> Patching MIUI/HyperOS kernel cmdline...";
-    E404_ROM_TYPE=2;
-  ;;
-  *aosp*|*AOSP*|*clo*|*CLO*)
-    ui_print "--> Patching AOSP/CLO kernel cmdline... ";
-    E404_ROM_TYPE=1;
-  ;;
-  *)
-    ui_print "--> Patching default kernel cmdline... ";
-    E404_ROM_TYPE=0;
-  ;;
-esac
+manual_install(){
+  ui_print " ";
+  ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      root="root_ksu";
+      ui_print " > Selected KernelSU Root.";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      root="root_noksu";
+      ui_print " > Selected Default Root.";
+      break;
+      ;;
+  esac
+  done
+  sleep 2;
+  ui_print " ";
 
-case "$ZIPFILE" in
-  *effcpu*|*EFFCPU*)
-    ui_print "--> Patching efficient CPUFreq cmdline...";
-    E404_EFFCPU=1;
-  ;;
-esac
+  ui_print "- DTBO : Miui/HyperOS (Vol +) || AOSP/CLO/Default (Vol -)";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      dtbo="dtbo_oem";
+      ir="ir_blaster_def";
+      ui_print " > Selected Miui/HyperOS DTBO.";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      dtbo="dtbo_def";
+      ui_print " > Selected AOSP/CLO/Default DTBO.";
+      break;
+      ;;
+  esac
+  done
+  sleep 2;
+  ui_print " ";
 
-case "$ZIPFILE" in
-  *ir*|*IR*)
-    ui_print "--> Patching IR Blaster cmdline...";
-    E404_IR=2;
-  ;;
-esac
+  ui_print "- DTB : EFFCPU (Vol +) || Default (Vol -)";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      dtb="dtb_effcpu";
+      ui_print " > Selected EFFCPU DTB.";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      dtb="dtb_def";
+      ui_print " > Selected Default DTB.";
+      break;
+      ;;
+  esac
+  done
+  sleep 2;
+  ui_print " ";
+
+  ui_print "- IR Blaster : LOS Based (Vol +) || Default (Vol -)";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      ir="ir_blaster_mi";
+      ui_print " > Selected LOS Based IR.";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      ir="ir_blaster_def";
+      ui_print " > Selected Default IR.";
+      break;
+      ;;
+  esac
+  done
+  sleep 2;
+  ui_print " ";
+
+  if [[ "$is_alioth" == "1" ]]; then
+    ui_print "- Batt Profile: 5K mAh (Vol +) || Default (Vol -)";
+    while true; do
+    ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+    case $ev in
+      *KEY_VOLUMEUP*)
+        batt="batt_5k";
+        ui_print " > Selected 5K mAh Batt Profile.";
+        break;
+        ;;
+      *KEY_VOLUMEDOWN*)
+        batt="batt_def";
+        ui_print " > Selected Default Batt Profile.";
+        break;
+        ;;
+    esac
+    done
+    sleep 2;
+    ui_print " ";
+  else
+    batt="batt_def";
+  fi
+}
+
+auto_install(){
+  ui_print " ";
+    case "$ZIPFILE" in
+      *-ksu*|*-KSU*|*-Ksu*)
+        ui_print "--> Patching KernelSU.";
+        root="root_ksu";
+      ;;
+      *)
+        root="root_noksu";
+      ;;
+    esac
+    sleep 1;
+    case "$ZIPFILE" in
+      *-miui*|*-MIUI*|*-Miui|*-hyper*|*-HYPER*|*-Hyper*)
+        ui_print "--> Patching MIUI/HyperOS DTBO.";
+        dtbo="dtbo_oem";
+        ir="ir_blaster_def";
+      ;;
+      *aosp*|*AOSP*|*Aosp|*clo*|*CLO*|*Clo*|*)
+        dtbo="dtbo_def";
+      ;;
+    esac
+    sleep 1;
+    case "$ZIPFILE" in
+      *-effcpu*|*-EFFCPU*|*-Effcpu*)
+        ui_print "--> Patching EFFCPU DTB.";
+        dtb="dtb_effcpu";
+      ;;
+      *)
+        dtb="dtb_def";
+      ;;
+    esac
+    sleep 1;
+    case "$ZIPFILE" in
+      *-ir*|*-IR*|*-Ir*)
+        ui_print "--> Patching IR Blaster.";
+        ir="ir_blaster_mi";
+      ;;
+      *)
+        ir="ir_blaster_def";
+      ;;
+    esac
+    sleep 1;
+    case "$ZIPFILE" in
+      *-5K*|*-5k*)
+        if [[ "$is_alioth" == "1" ]]; then
+          ui_print "--> Patching 5000mAh Battery Profile.";
+          batt="batt_5k";
+        else
+          batt="batt_def";
+        fi
+      ;;
+      *)
+        batt="batt_def";
+      ;;
+    esac
+    sleep 1;
+}
+
+if [[ "$SIDELOAD" == "1" ]]; then
+  ui_print " ! Sideloading detected, using manual install !";
+  manual_install;
+else
+  ui_print " ! Select Installation Method :";
+  ui_print " - Manual Install (Vol +) || Auto Install (Vol -) !";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+    case $ev in
+        *KEY_VOLUMEUP*)
+          ui_print "  > Manual Install Selected.";
+          sleep 2;
+          manual_install;
+          break;
+          ;;
+        *KEY_VOLUMEDOWN*)
+          ui_print "  > Auto Install Selected.";
+          sleep 2;
+          auto_install;
+          break;
+          ;;
+      esac
+  done
+fi
 
 if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_profiles.json ]; then
   ui_print " ";
-	ui_print "-> Your rom does not have Uclamp task profiles !";
-	ui_print "-> Please install Uclamp task profiles module !";
-  ui_print "--> Ignore this if you already have.";
+	ui_print " ! Your rom does not have Uclamp task profiles !";
+	ui_print " ! Please install Uclamp task profiles module !";
+  ui_print " ! Ignore this if you already have !";
 fi;
 
-mv *-dtbo.img $home/dtbo.img;
+mv *-Image.gz $home/Image.gz;
+if [[ "$batt" == "batt_5k" ]]; then
+  mv *-dtbo-5k.img $home/dtbo.img;
+else
+  mv *-dtbo.img $home/dtbo.img;
+fi;
 mv *-dtb $home/dtb;
 
-## AnyKernel install
 dump_boot;
 
-# Begin Ramdisk Changes
-if [ "$E404_KSU" == "1" ]; then
-  patch_cmdline "e404_kernelsu" "e404_kernelsu=1";
-else
-  patch_cmdline "e404_kernelsu" "e404_kernelsu=0";
-fi
+#Remove older patches
+patch_cmdline "e404_kernelsu" ""
+patch_cmdline "e404_rom_type" ""
+patch_cmdline "e404_effcpu" ""
+patch_cmdline "e404_ir_type" ""
+patch_cmdline "e404_panel_height" ""
+patch_cmdline "e404_panel_width" ""
+patch_cmdline "e404_args" ""
 
-if [ "$E404_ROM_TYPE" == "2" ]; then
-  patch_cmdline "e404_rom_type" "e404_rom_type=2";
-elif [ "$E404_ROM_TYPE" == "1" ]; then
-  patch_cmdline "e404_rom_type" "e404_rom_type=1";
-else
-  patch_cmdline "e404_rom_type" "e404_rom_type=0";
-fi
+# Patch in one line
+patch_cmdline "e404_args" "e404_args="$root,$dtbo,$dtb,$ir,$batt""
 
-if [ "$E404_EFFCPU" == "1" ]; then
-  patch_cmdline "e404_effcpu" "e404_effcpu=1";
-else
-  patch_cmdline "e404_effcpu" "e404_effcpu=0";
-fi
-
-if [ "$E404_IR" == "2" ]; then
-  patch_cmdline "e404_effcpu" "e404_ir_type=2";
-else
-  patch_cmdline "e404_effcpu" "e404_ir_type=1";
-fi
-
-# migrate from /overlay to /overlay.d to enable SAR Magisk
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
 fi;
 
 write_boot;
-## end install
 
 if [ $is_apollo == "0" ]; then 
-  ## vendor_boot shell variables
   block=/dev/block/bootdevice/by-name/vendor_boot;
   is_slot_device=1;
   ramdisk_compression=auto;
   patch_vbmeta_flag=auto;
-
-  # reset for vendor_boot patching
   reset_ak;
-
-  # vendor_boot install
   dump_boot;
-
   write_boot;
-  ## end vendor_boot install
 fi;
