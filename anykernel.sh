@@ -10,13 +10,13 @@ do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=munch
-device.name2=munchin
+device.name1=apollo
+device.name2=apollon
 supported.versions=
 '; }
 
-is_apollo=0;
-is_munch=1;
+is_apollo=1;
+is_munch=0;
 is_alioth=0;
 
 e404_args="";
@@ -40,6 +40,11 @@ ui_print " ";
 manual_install(){
   ui_print " ";
   ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
+  case "$ZIPFILE" in
+    *port*|*PORT*|*Port*)
+      ui_print " Note : Port ROM Usually Need KernelSU Root !";
+    ;;
+  esac
   while true; do
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
   case $ev in
@@ -58,7 +63,7 @@ manual_install(){
   sleep 2;
   ui_print " ";
 
-  ui_print "- DTBO : Miui/HyperOS (Vol +) || AOSP/CLO/Default (Vol -)";
+  ui_print "- DTBO : Miui/HyperOS (Vol +) || Default (Vol -)";
   while true; do
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
   case $ev in
@@ -70,7 +75,7 @@ manual_install(){
       ;;
     *KEY_VOLUMEDOWN*)
       dtbo="dtbo_def";
-      ui_print " > Selected AOSP/CLO/Default DTBO.";
+      ui_print " > Selected Default DTBO.";
       break;
       ;;
   esac
@@ -143,7 +148,7 @@ manual_install(){
 auto_install(){
   ui_print " ";
     case "$ZIPFILE" in
-      *-ksu*|*-KSU*|*-Ksu*)
+      *ksu*|*KSU*|*Ksu*|*port*|*PORT*|*Port*)
         ui_print "--> Patching KernelSU.";
         root="root_ksu";
       ;;
@@ -153,18 +158,18 @@ auto_install(){
     esac
     sleep 1;
     case "$ZIPFILE" in
-      *-miui*|*-MIUI*|*-Miui|*-hyper*|*-HYPER*|*-Hyper*)
+      *miui*|*MIUI*|*Miui|*hyper*|*HYPER*|*Hyper*)
         ui_print "--> Patching MIUI/HyperOS DTBO.";
         dtbo="dtbo_oem";
         ir="ir_blaster_def";
       ;;
-      *aosp*|*AOSP*|*Aosp|*clo*|*CLO*|*Clo*|*)
+      *aosp*|*AOSP*|*Aosp|*clo*|*CLO*|*Clo*|*port*|*PORT*|*Port*|*)
         dtbo="dtbo_def";
       ;;
     esac
     sleep 1;
     case "$ZIPFILE" in
-      *-effcpu*|*-EFFCPU*|*-Effcpu*)
+      *effcpu*|*EFFCPU*|*Effcpu*)
         ui_print "--> Patching EFFCPU DTB.";
         dtb="dtb_effcpu";
       ;;
@@ -174,7 +179,7 @@ auto_install(){
     esac
     sleep 1;
     case "$ZIPFILE" in
-      *-ir*|*-IR*|*-Ir*)
+      *ir*|*IR*|*Ir*)
         ui_print "--> Patching IR Blaster.";
         ir="ir_blaster_mi";
       ;;
@@ -184,7 +189,7 @@ auto_install(){
     esac
     sleep 1;
     case "$ZIPFILE" in
-      *-5K*|*-5k*)
+      *5K*|*5k*)
         if [[ "$is_alioth" == "1" ]]; then
           ui_print "--> Patching 5000mAh Battery Profile.";
           batt="batt_5k";
@@ -241,14 +246,6 @@ mv *-dtb $home/dtb;
 
 dump_boot;
 
-#Remove older patches
-patch_cmdline "e404_kernelsu" ""
-patch_cmdline "e404_rom_type" ""
-patch_cmdline "e404_effcpu" ""
-patch_cmdline "e404_ir_type" ""
-patch_cmdline "e404_panel_height" ""
-patch_cmdline "e404_panel_width" ""
-patch_cmdline "e404_args" ""
 
 # Patch in one line
 patch_cmdline "e404_args" "e404_args="$root,$dtbo,$dtb,$ir,$batt""
