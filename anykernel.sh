@@ -10,13 +10,13 @@ do.modules=0
 do.systemless=1
 do.cleanup=1
 do.cleanuponabort=0
-device.name1=apollo
-device.name2=apollon
+device.name1=munch
+device.name2=munchin
 supported.versions=
 '; }
 
-is_apollo=1;
-is_munch=0;
+is_apollo=0;
+is_munch=1;
 is_alioth=0;
 
 e404_args="";
@@ -42,8 +42,8 @@ manual_install(){
   ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
   case "$ZIPFILE" in
     *port*|*PORT*|*Port*)
-      ui_print " Note : Port ROM Usually Need KernelSU Root !";
-    ;;
+    ui_print " Note : Port ROM Usually Need KernelSU Root !";
+  ;;
   esac
   while true; do
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
@@ -236,7 +236,7 @@ if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_pro
   ui_print " ! Ignore this if you already have !";
 fi;
 
-mv *-Image.gz $home/Image.gz;
+mv *-Image* $home/Image;
 if [[ "$batt" == "batt_5k" ]]; then
   mv *-dtbo-5k.img $home/dtbo.img;
 else
@@ -244,11 +244,23 @@ else
 fi;
 mv *-dtb $home/dtb;
 
+case "$ZIPFILE" in
+  *port*|*PORT*|*Port*)
+    rom="port";
+  ;;
+  *miui*|*MIUI*|*Miui|*hyper*|*HYPER*|*Hyper*)
+    rom="miui";
+  ;;
+  *aosp*|*AOSP*|*Aosp*|*clo*|*CLO*|*Clo*|*)
+    rom="aosp";
+  ;;
+esac
+
 dump_boot;
 
 
 # Patch in one line
-patch_cmdline "e404_args" "e404_args="$root,$dtbo,$dtb,$ir,$batt""
+patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$ir,$batt""
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
