@@ -186,7 +186,7 @@ if [[ "$batt" == "batt_5k" ]]; then
   mv *-dtbo-5k.img $home/dtbo.img;
 else
   mv *-dtbo.img $home/dtbo.img;
-fi;
+fi
 mv *-dtb $home/dtb;
 
 if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_profiles.json ]; then
@@ -194,7 +194,7 @@ if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_pro
 	ui_print " ! Your rom does not have Uclamp task profiles !";
 	ui_print " ! Please install Uclamp task profiles module !";
   ui_print " ! Ignore this if you already have !";
-fi;
+fi
 
 dump_boot;
 
@@ -203,7 +203,7 @@ patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
-fi;
+fi
 
 write_boot;
 
@@ -214,4 +214,4 @@ if [ $is_slot_device == 1 ]; then
   reset_ak;
   dump_boot;
   write_boot;
-fi;
+fi
