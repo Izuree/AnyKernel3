@@ -469,7 +469,7 @@ flash_generic() {
       for file in $1 $1$slot; do
         if [ -e $path/$file ]; then
           imgblock=$path/$file;
-          break 2;
+          break;
         fi;
       done;
     done;
@@ -491,7 +491,7 @@ flash_generic() {
             for file in $avb $avb$slot; do
               if [ -e $avbpath/$file ]; then
                 avbblock=$avbpath/$file;
-                break 2;
+                break;
               fi;
             done;
           done;
@@ -907,7 +907,7 @@ setup_ak() {
           elif [ -e /dev/$part ]; then
             target=/dev/$part;
           fi;
-          [ "$target" ] && break 2;
+          [ "$target" ] && break;
         done;
       done;
     ;;

@@ -4,33 +4,25 @@
 # E404 kernel custom installer by 113
 
 properties() { '
-kernel.string=E404 Kernel by Project 113
-do.devicecheck=1
+kernel.string=E404R Kernel by Project 113
 do.modules=0
 do.systemless=1
-do.cleanup=1
-do.cleanuponabort=0
-device.name1=munch
-device.name2=munchin
-supported.versions=
 '; }
 
-is_apollo=0;
-is_munch=1;
-is_alioth=0;
+devicename=munch;
 
 e404_args="";
-
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
 
-if [ $is_apollo == "1" ]; then
-  is_slot_device=0;
-elif [ $is_munch == "1" ]; then
-  is_slot_device=1;
-elif [ $is_alioth == "1" ]; then
-  is_slot_device=1;
-fi;
+case "$devicename" in
+  munch|alioth)
+    is_slot_device=1;
+  ;;
+  apollo|*mi)
+    is_slot_device=0;
+  ;;
+esac
 
 . tools/ak3-core.sh;
 set_perm_recursive 0 0 750 750 $ramdisk/*;
@@ -38,6 +30,8 @@ set_perm_recursive 0 0 750 750 $ramdisk/*;
 ui_print " ";
 
 manual_install(){
+  ui_print "--> Installing E404R Kernel for $devicename";
+  sleep 1;
   ui_print " ";
   ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
   case "$ZIPFILE" in
@@ -60,7 +54,7 @@ manual_install(){
       ;;
   esac
   done
-  sleep 2;
+  sleep 1;
   ui_print " ";
 
   ui_print "- DTBO : Miui/HyperOS (Vol +) || Default (Vol -)";
@@ -69,7 +63,6 @@ manual_install(){
   case $ev in
     *KEY_VOLUMEUP*)
       dtbo="dtbo_oem";
-      ir="ir_blaster_def";
       ui_print " > Selected Miui/HyperOS DTBO.";
       break;
       ;;
@@ -80,7 +73,7 @@ manual_install(){
       ;;
   esac
   done
-  sleep 2;
+  sleep 1;
   ui_print " ";
 
   ui_print "- DTB : EFFCPU (Vol +) || Default (Vol -)";
@@ -99,29 +92,10 @@ manual_install(){
       ;;
   esac
   done
-  sleep 2;
+  sleep 1;
   ui_print " ";
 
-  ui_print "- IR Blaster : LOS Based (Vol +) || Default (Vol -)";
-  while true; do
-  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-  case $ev in
-    *KEY_VOLUMEUP*)
-      ir="ir_blaster_mi";
-      ui_print " > Selected LOS Based IR.";
-      break;
-      ;;
-    *KEY_VOLUMEDOWN*)
-      ir="ir_blaster_def";
-      ui_print " > Selected Default IR.";
-      break;
-      ;;
-  esac
-  done
-  sleep 2;
-  ui_print " ";
-
-  if [[ "$is_alioth" == "1" ]]; then
+  if [[ "$devicename" == "alioth" ]]; then
     ui_print "- Batt Profile: 5K mAh (Vol +) || Default (Vol -)";
     while true; do
     ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
@@ -138,7 +112,7 @@ manual_install(){
         ;;
     esac
     done
-    sleep 2;
+    sleep 1;
     ui_print " ";
   else
     batt="batt_def";
@@ -156,18 +130,15 @@ auto_install(){
         root="root_noksu";
       ;;
     esac
-    sleep 1;
     case "$ZIPFILE" in
       *miui*|*MIUI*|*Miui|*hyper*|*HYPER*|*Hyper*)
         ui_print "--> Patching MIUI/HyperOS DTBO.";
         dtbo="dtbo_oem";
-        ir="ir_blaster_def";
       ;;
       *aosp*|*AOSP*|*Aosp|*clo*|*CLO*|*Clo*|*port*|*PORT*|*Port*|*)
         dtbo="dtbo_def";
       ;;
     esac
-    sleep 1;
     case "$ZIPFILE" in
       *effcpu*|*EFFCPU*|*Effcpu*)
         ui_print "--> Patching EFFCPU DTB.";
@@ -177,17 +148,6 @@ auto_install(){
         dtb="dtb_def";
       ;;
     esac
-    sleep 1;
-    case "$ZIPFILE" in
-      *ir*|*IR*|*Ir*)
-        ui_print "--> Patching IR Blaster.";
-        ir="ir_blaster_mi";
-      ;;
-      *)
-        ir="ir_blaster_def";
-      ;;
-    esac
-    sleep 1;
     case "$ZIPFILE" in
       *5K*|*5k*)
         if [[ "$is_alioth" == "1" ]]; then
@@ -201,7 +161,6 @@ auto_install(){
         batt="batt_def";
       ;;
     esac
-    sleep 1;
 }
 
 if [[ "$SIDELOAD" == "1" ]]; then
@@ -215,13 +174,13 @@ else
     case $ev in
         *KEY_VOLUMEUP*)
           ui_print "  > Manual Install Selected.";
-          sleep 2;
+          sleep 1;
           manual_install;
           break;
           ;;
         *KEY_VOLUMEDOWN*)
           ui_print "  > Auto Install Selected.";
-          sleep 2;
+          sleep 1;
           auto_install;
           break;
           ;;
@@ -260,7 +219,7 @@ dump_boot;
 
 
 # Patch in one line
-patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$ir,$batt""
+patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
@@ -268,9 +227,8 @@ fi;
 
 write_boot;
 
-if [ $is_apollo == "0" ]; then 
+if [ $is_slot_device == 1 ]; then 
   block=/dev/block/bootdevice/by-name/vendor_boot;
-  is_slot_device=1;
   ramdisk_compression=auto;
   patch_vbmeta_flag=auto;
   reset_ak;
