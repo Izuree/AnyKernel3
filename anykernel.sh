@@ -10,6 +10,7 @@ do.systemless=1
 '; }
 
 devicecheck=1;
+romcheck="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")"
 devicename=munch;
 
 e404_args="";
@@ -31,8 +32,6 @@ set_perm_recursive 0 0 750 750 $ramdisk/*;
 ui_print " ";
 
 manual_install(){
-  ui_print "--> Installing E404R Kernel for $devicename";
-  sleep 1;
   ui_print " ";
   ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
   case "$ZIPFILE" in
@@ -51,25 +50,6 @@ manual_install(){
     *KEY_VOLUMEDOWN*)
       root="root_noksu";
       ui_print " > Selected Default Root.";
-      break;
-      ;;
-  esac
-  done
-  sleep 1;
-  ui_print " ";
-
-  ui_print "- DTBO : Miui/HyperOS (Vol +) || Default (Vol -)";
-  while true; do
-  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-  case $ev in
-    *KEY_VOLUMEUP*)
-      dtbo="dtbo_oem";
-      ui_print " > Selected Miui/HyperOS DTBO.";
-      break;
-      ;;
-    *KEY_VOLUMEDOWN*)
-      dtbo="dtbo_def";
-      ui_print " > Selected Default DTBO.";
       break;
       ;;
   esac
@@ -132,15 +112,6 @@ auto_install(){
       ;;
     esac
     case "$ZIPFILE" in
-      *miui*|*MIUI*|*Miui|*hyper*|*HYPER*|*Hyper*)
-        ui_print "--> Patching MIUI/HyperOS DTBO.";
-        dtbo="dtbo_oem";
-      ;;
-      *aosp*|*AOSP*|*Aosp|*clo*|*CLO*|*Clo*|*port*|*PORT*|*Port*|*)
-        dtbo="dtbo_def";
-      ;;
-    esac
-    case "$ZIPFILE" in
       *effcpu*|*EFFCPU*|*Effcpu*)
         ui_print "--> Patching EFFCPU DTB.";
         dtb="dtb_effcpu";
@@ -189,12 +160,26 @@ else
   done
 fi
 
-if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_profiles.json ]; then
-  ui_print " ";
-	ui_print " ! Your rom does not have Uclamp task profiles !";
-	ui_print " ! Please install Uclamp task profiles module !";
-  ui_print " ! Ignore this if you already have !";
-fi;
+if [[ "$devicecheck" == "0" ]]; then
+    rom=port
+    dtbo=dtbo_oem;
+else
+    rom=aosp
+    dtbo=dtbo_def;
+fi
+
+if [[ -z "$romcheck" ]]; then
+  romcheck="$(file_getprop /product/etc/build.prop "ro.miui.build.region")"
+fi
+
+case "$romcheck" in
+  cn|in|ru|id|eu|tr|tw|gb|global|mx|jp|kr|lm|cl|mi)
+      ui_print " "
+      ui_print " --> Patching MIUI/HyperOS DTBO...";
+      dtbo=dtbo_oem;
+      rom="miui";
+    ;;
+esac
 
 mv *-Image* $home/Image;
 if [[ "$batt" == "batt_5k" ]]; then
@@ -204,20 +189,14 @@ else
 fi;
 mv *-dtb $home/dtb;
 
-case "$ZIPFILE" in
-  *port*|*PORT*|*Port*)
-    rom="port";
-  ;;
-  *miui*|*MIUI*|*Miui|*hyper*|*HYPER*|*Hyper*)
-    rom="miui";
-  ;;
-  *aosp*|*AOSP*|*Aosp*|*clo*|*CLO*|*Clo*|*)
-    rom="aosp";
-  ;;
-esac
+if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_profiles.json ]; then
+  ui_print " ";
+	ui_print " ! Your rom does not have Uclamp task profiles !";
+	ui_print " ! Please install Uclamp task profiles module !";
+  ui_print " ! Ignore this if you already have !";
+fi;
 
 dump_boot;
-
 
 # Patch in one line
 patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
