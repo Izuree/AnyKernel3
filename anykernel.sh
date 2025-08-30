@@ -9,6 +9,7 @@ do.modules=0
 do.systemless=1
 '; }
 
+devicecheck=1;
 devicename=munch;
 
 e404_args="";
