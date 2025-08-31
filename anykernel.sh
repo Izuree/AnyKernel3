@@ -1,7 +1,7 @@
 # AnyKernel3 Ramdisk Mod Script
 # osm0sis @ xda-developers
 
-# E404 kernel custom installer by 113
+# E404R kernel custom installer by 113
 
 properties() { '
 kernel.string=E404R Kernel by Project 113
@@ -198,7 +198,6 @@ fi
 
 dump_boot;
 
-# Patch in one line
 patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
 
 if [ -d $ramdisk/overlay ]; then
