@@ -38,7 +38,7 @@ manual_configuration(){
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
   case $ev in
     *KEY_VOLUMEUP*)
-      [[ "$oplus" != "1" ]] && rom="aosp" || rom="oplus";
+      [[ "$oplus" != "1" ]] && rom="aosp" || rom="port";
       dtbo="dtbo_def";
       break;
       ;;
@@ -117,7 +117,7 @@ auto_configuration(){
   miprops="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")";
   if [[ "$oplus" == "1" ]]; then
     ui_print "--> OPLUS Port ROM detected, Configuring...";
-    rom="oplus";
+    rom="port";
     dtbo="dtbo_def";
   elif [[ -z "$miprops" ]]; then
     miprops="$(file_getprop /product/etc/build.prop "ro.miui.build.region")"
@@ -130,8 +130,8 @@ auto_configuration(){
     esac
   else
     ui_print "--> AOSP/CLO ROM detected, Configuring...";
-    rom="miui";
-    dtbo=dtbo_oem;
+    rom="aosp";
+    dtbo=dtbo_def;
   fi
 
   sleep 0.5;
@@ -178,7 +178,7 @@ auto_configuration(){
 # Start installation
 # 
 
-devicename=munch;
+devicename=apollo;
 e404_args="";
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
