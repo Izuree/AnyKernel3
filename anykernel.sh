@@ -9,10 +9,176 @@ do.modules=0
 do.systemless=1
 '; }
 
-devicecheck=1;
-romcheck="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")"
-devicename=munch;
+devicecheck() {
+  [ "$(file_getprop anykernel.sh devicecheck)" == 1 ] || return 1;
+  local device devicename match product testname vendordevice vendorproduct;
+  device=$(getprop ro.product.device 2>/dev/null);
+  product=$(getprop ro.build.product 2>/dev/null);
+  vendordevice=$(getprop ro.product.vendor.device 2>/dev/null);
+  vendorproduct=$(getprop ro.vendor.product.device 2>/dev/null);
+  for testname in $(grep 'devicename' anykernel.sh | cut -d= -f2-); do
+    for devicename in $device $product $vendordevice $vendorproduct; do
+      if [ "$devicename" == *"$testname"* ]; then
+        match=1;
+        break;
+      fi;
+    done;
+  done;
+  if [ ! "$match" ]; then
+    abort " " "Unsupported device. Aborting...";
+  fi;
+}
 
+manual_configuration(){
+  sleep 0.5;
+  ui_print " " " - ROM Type :";
+  ui_print "  (Vol +)  AOSP/CLO/OPLUS ";
+  ui_print "  (Vol -)  MIUI/HyperOS ";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      [[ "$oplus" != "1" ]] && rom="aosp" || rom="oplus";
+      dtbo="dtbo_def";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      rom="miui"
+      dtbo="dtbo_oem";
+      break;
+      ;;
+  esac
+  done
+  sleep 1;
+
+  ui_print " " " - KernelSU Root :";
+  ui_print "  (Vol +)  Yes ";
+  ui_print "  (Vol -)  No/Default ";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      root="root_ksu";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      root="root_noksu";
+      break;
+      ;;
+  esac
+  done
+  sleep 1;
+
+  ui_print " " " - DTB CPU Frequency : ";
+  ui_print "  (Vol +)  EFFCPU ";
+  ui_print "  (Vol -)  Default ";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      dtb="dtb_effcpu";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      dtb="dtb_def";
+      break;
+      ;;
+  esac
+  done
+  sleep 1;
+
+  if [[ "$devicename" == "alioth" ]]; then
+    ui_print " " " - Battery Profile :";
+    ui_print "  (Vol +)  5000 mAh (Vol +) ";
+    ui_print "  (Vol +)  Default (Vol -) ";
+    while true; do
+    ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+    case $ev in
+      *KEY_VOLUMEUP*)
+        batt="batt_5k";
+        break;
+        ;;
+      *KEY_VOLUMEDOWN*)
+        batt="batt_def";
+        break;
+        ;;
+    esac
+    done
+    sleep 1;
+  else
+    batt="batt_def";
+  fi
+  ui_print " " " Manual Configuration Done ! ";
+}
+
+auto_configuration(){
+  sleep 0.5;
+  ui_print " " " Running Auto Configuration... ";
+  miprops="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")";
+  if [[ "$oplus" == "1" ]]; then
+    ui_print "--> OPLUS Port ROM detected, Configuring...";
+    rom="oplus";
+    dtbo="dtbo_def";
+  elif [[ -z "$miprops" ]]; then
+    miprops="$(file_getprop /product/etc/build.prop "ro.miui.build.region")"
+    case "$miprops" in
+      cn|in|ru|id|eu|tr|tw|gb|global|mx|jp|kr|lm|cl|mi)
+          ui_print "--> Miui/HyperOS ROM detected, Configuring...";
+          rom="miui";
+          dtbo=dtbo_oem;
+        ;;
+    esac
+  else
+    ui_print "--> AOSP/CLO ROM detected, Configuring...";
+    rom="miui";
+    dtbo=dtbo_oem;
+  fi
+
+  sleep 0.5;
+    case "$ZIPFILE" in
+      *ksu*|*KSU*|*Ksu*)
+        ui_print "--> KernelSU detected, Configuring...";
+        root="root_ksu";
+      ;;
+      *)
+        if [[ -d /data/adb/ksu ]] && [[ -f /data/adb/ksud ]]; then
+          ui_print "--> KernelSU detected, Configuring...";
+          root="root_ksu";
+        else
+          root="root_noksu";
+        fi
+      ;;
+    esac
+    case "$ZIPFILE" in
+      *effcpu*|*EFFCPU*|*Effcpu*)
+        ui_print "--> Configuring EFFCPUFreq DTB...";
+        dtb="dtb_effcpu";
+      ;;
+      *)
+        dtb="dtb_def";
+      ;;
+    esac
+    case "$ZIPFILE" in
+      *5K*|*5k*)
+        if [[ "$is_alioth" == "1" ]]; then
+          ui_print "--> Configuring Alioth 5000mAh Battery Profile...";
+          batt="batt_5k";
+        else
+          batt="batt_def";
+        fi
+      ;;
+      *)
+        batt="batt_def";
+      ;;
+    esac
+    ui_print " " " Auto Configuration Done ! ";
+}
+
+#
+# Start installation
+# 
+
+devicename=munch;
 e404_args="";
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
@@ -29,157 +195,39 @@ esac
 . tools/ak3-core.sh;
 set_perm_recursive 0 0 750 750 $ramdisk/*;
 
-ui_print " ";
-
-manual_install(){
-  ui_print " ";
-  ui_print "- KernelSU Root : Yes (Vol +) || No/Default (Vol -)";
-  case "$ZIPFILE" in
-    *port*|*PORT*|*Port*)
-    ui_print " Note : Port ROM Usually Need KernelSU Root !";
-  ;;
-  esac
-  while true; do
-  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-  case $ev in
-    *KEY_VOLUMEUP*)
-      root="root_ksu";
-      ui_print " > Selected KernelSU Root.";
-      break;
-      ;;
-    *KEY_VOLUMEDOWN*)
-      root="root_noksu";
-      ui_print " > Selected Default Root.";
-      break;
-      ;;
-  esac
-  done
-  sleep 1;
-  ui_print " ";
-
-  ui_print "- DTB : EFFCPU (Vol +) || Default (Vol -)";
-  while true; do
-  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-  case $ev in
-    *KEY_VOLUMEUP*)
-      dtb="dtb_effcpu";
-      ui_print " > Selected EFFCPU DTB.";
-      break;
-      ;;
-    *KEY_VOLUMEDOWN*)
-      dtb="dtb_def";
-      ui_print " > Selected Default DTB.";
-      break;
-      ;;
-  esac
-  done
-  sleep 1;
-  ui_print " ";
-
-  if [[ "$devicename" == "alioth" ]]; then
-    ui_print "- Batt Profile: 5K mAh (Vol +) || Default (Vol -)";
-    while true; do
-    ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-    case $ev in
-      *KEY_VOLUMEUP*)
-        batt="batt_5k";
-        ui_print " > Selected 5K mAh Batt Profile.";
-        break;
-        ;;
-      *KEY_VOLUMEDOWN*)
-        batt="batt_def";
-        ui_print " > Selected Default Batt Profile.";
-        break;
-        ;;
-    esac
-    done
-    sleep 1;
-    ui_print " ";
-  else
-    batt="batt_def";
-  fi
-}
-
-auto_install(){
-  ui_print " ";
-    case "$ZIPFILE" in
-      *ksu*|*KSU*|*Ksu*|*port*|*PORT*|*Port*)
-        ui_print "--> Patching KernelSU.";
-        root="root_ksu";
-      ;;
-      *)
-        root="root_noksu";
-      ;;
-    esac
-    case "$ZIPFILE" in
-      *effcpu*|*EFFCPU*|*Effcpu*)
-        ui_print "--> Patching EFFCPU DTB.";
-        dtb="dtb_effcpu";
-      ;;
-      *)
-        dtb="dtb_def";
-      ;;
-    esac
-    case "$ZIPFILE" in
-      *5K*|*5k*)
-        if [[ "$is_alioth" == "1" ]]; then
-          ui_print "--> Patching 5000mAh Battery Profile.";
-          batt="batt_5k";
-        else
-          batt="batt_def";
-        fi
-      ;;
-      *)
-        batt="batt_def";
-      ;;
-    esac
-}
-
-if [[ "$SIDELOAD" == "1" ]]; then
-  ui_print " ! Sideloading detected, using manual install !";
-  manual_install;
+if [[ "$(getprop | grep oemports10t)" == *oemports10t* ]] ||
+  [[ -f /vendor/OemPorts10T.prop ]] ||
+  [[ -f /vendor/etc/init/OemPorts10T.rc ]]; then
+  ui_print " ! Detected OPLUS Port ROM by Dandaa ! ";
+  ui_print " Note : Port ROM Usually Need KernelSU Root !";
+  oplus=1;
 else
-  ui_print " ! Select Installation Method :";
-  ui_print " - Manual Install (Vol +) || Auto Install (Vol -) !";
+  devicecheck;
+fi
+  
+if [[ "$SIDELOAD" == "1" ]]; then
+  ui_print " " " ! Sideloading Detected, Overriding to Manual Configuration !";
+  manual_configuration;
+else
+  ui_print " " "Select Kernel Configuration :";
+  ui_print "  (Vol +) Manual Configuration ";
+  ui_print "  (Vol -) Auto Configuration ";
   while true; do
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
     case $ev in
         *KEY_VOLUMEUP*)
-          ui_print "  > Manual Install Selected.";
-          sleep 1;
-          manual_install;
+          manual_configuration;
           break;
           ;;
         *KEY_VOLUMEDOWN*)
-          ui_print "  > Auto Install Selected.";
-          sleep 1;
-          auto_install;
+          auto_configuration;
           break;
           ;;
-      esac
+    esac
   done
 fi
-
-if [[ "$devicecheck" == "0" ]]; then
-    rom=port
-    dtbo=dtbo_oem;
-else
-    rom=aosp
-    dtbo=dtbo_def;
-fi
-
-if [[ -z "$romcheck" ]]; then
-  romcheck="$(file_getprop /product/etc/build.prop "ro.miui.build.region")"
-fi
-
-case "$romcheck" in
-  cn|in|ru|id|eu|tr|tw|gb|global|mx|jp|kr|lm|cl|mi)
-      ui_print " "
-      ui_print " --> Patching MIUI/HyperOS DTBO...";
-      dtbo=dtbo_oem;
-      rom="miui";
-    ;;
-esac
+sleep 0.5;
+ui_print " Installing... ";
 
 mv *-Image* $home/Image;
 if [[ "$batt" == "batt_5k" ]]; then
@@ -189,16 +237,14 @@ else
 fi
 mv *-dtb $home/dtb;
 
-if [ ! -f /vendor/etc/task_profiles.json ] && [ ! -f /system/vendor/etc/task_profiles.json ]; then
-  ui_print " ";
-	ui_print " ! Your rom does not have Uclamp task profiles !";
-	ui_print " ! Please install Uclamp task profiles module !";
-  ui_print " ! Ignore this if you already have !";
+if [ ! -f /vendor/etc/task_profiles.json ]; then
+	ui_print " " " Note : Uclamp Task Profile Not Found ! " " ";
 fi
 
 dump_boot;
 
 patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
+# ui_print " E404R Cmdline Args : e404_args="$root,$rom,$dtbo,$dtb,$batt"";
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
