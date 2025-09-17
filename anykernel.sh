@@ -2,6 +2,7 @@
 # osm0sis @ xda-developers
 
 # E404R kernel custom installer by 113
+# What are you looking for ?
 
 properties() { '
 kernel.string=E404R Kernel by Project 113
@@ -31,19 +32,27 @@ devicecheck() {
 
 manual_configuration(){
   sleep 0.5;
-  ui_print " " " - ROM Type :";
-  ui_print "  (Vol +)  AOSP/CLO/OPLUS ";
+  ui_print " " " - ROM (DTBO) Type :";
+  ui_print "  (Vol +)  AOSP/CLO ";
   ui_print "  (Vol -)  MIUI/HyperOS ";
   while true; do
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
   case $ev in
     *KEY_VOLUMEUP*)
-      [[ "$oplus" != "1" ]] && rom="aosp" || rom="port";
+      if [[ "$oplus" == "0" ]]; then
+        rom="rom_aosp"
+      else
+        rom="rom_port";
+      fi
       dtbo="dtbo_def";
       break;
       ;;
     *KEY_VOLUMEDOWN*)
-      rom="miui"
+      if [[ "$oplus" == "0" ]]; then
+        rom="rom_miui"
+      else
+        rom="rom_port";
+      fi
       dtbo="dtbo_oem";
       break;
       ;;
@@ -117,20 +126,20 @@ auto_configuration(){
   miprops="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")";
   if [[ "$oplus" == "1" ]]; then
     ui_print "--> OPLUS Port ROM detected, Configuring...";
-    rom="port";
+    rom="rom_port";
     dtbo="dtbo_def";
   elif [[ -z "$miprops" ]]; then
     miprops="$(file_getprop /product/etc/build.prop "ro.miui.build.region")"
     case "$miprops" in
       cn|in|ru|id|eu|tr|tw|gb|global|mx|jp|kr|lm|cl|mi)
           ui_print "--> Miui/HyperOS ROM detected, Configuring...";
-          rom="miui";
+          rom="rom_oem";
           dtbo=dtbo_oem;
         ;;
     esac
   else
     ui_print "--> AOSP/CLO ROM detected, Configuring...";
-    rom="aosp";
+    rom="rom_aosp";
     dtbo=dtbo_def;
   fi
 
@@ -178,7 +187,7 @@ auto_configuration(){
 # Start installation
 # 
 
-devicename=apollo;
+devicename=munch;
 e404_args="";
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
@@ -195,13 +204,14 @@ esac
 . tools/ak3-core.sh;
 set_perm_recursive 0 0 750 750 $ramdisk/*;
 
-if [[ "$(getprop | grep oemports10t)" == *oemports10t* ]] ||
-  [[ -f /vendor/OemPorts10T.prop ]] ||
+if [[ -f /vendor/OemPorts10T.prop ]] ||
   [[ -f /vendor/etc/init/OemPorts10T.rc ]]; then
   ui_print " ! Detected OPLUS Port ROM by Dandaa ! ";
+  ui_print " ! Manual Configuration is Recommended !";
   ui_print " Note : Port ROM Usually Need KernelSU Root !";
   oplus=1;
 else
+  oplus=0;
   devicecheck;
 fi
   
@@ -230,11 +240,7 @@ sleep 0.5;
 ui_print " Installing... ";
 
 mv *-Image* $home/Image;
-if [[ "$batt" == "batt_5k" ]]; then
-  mv *-dtbo-5k.img $home/dtbo.img;
-else
-  mv *-dtbo.img $home/dtbo.img;
-fi
+mv *-dtbo.img $home/dtbo.img;
 mv *-dtb $home/dtb;
 
 if [ ! -f /vendor/etc/task_profiles.json ]; then
@@ -244,7 +250,6 @@ fi
 dump_boot;
 
 patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
-# ui_print " E404R Cmdline Args : e404_args="$root,$rom,$dtbo,$dtb,$batt"";
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
