@@ -49,7 +49,7 @@ manual_configuration(){
       ;;
     *KEY_VOLUMEDOWN*)
       if [[ "$oplus" == "0" ]]; then
-        rom="rom_miui"
+        rom="rom_oem"
       else
         rom="rom_port";
       fi
@@ -187,7 +187,7 @@ auto_configuration(){
 # Start installation
 # 
 
-devicename=munch;
+devicename=lmi;
 e404_args="";
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
