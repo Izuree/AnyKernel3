@@ -32,7 +32,7 @@ devicecheck() {
 
 manual_configuration(){
   sleep 0.5;
-  ui_print " " " - ROM (DTBO) Type :";
+  ui_print " " " - ROM or DTBO Type :";
   ui_print "  (Vol +)  AOSP/CLO ";
   ui_print "  (Vol -)  MIUI/HyperOS ";
   while true; do
@@ -72,24 +72,6 @@ manual_configuration(){
       ;;
     *KEY_VOLUMEDOWN*)
       root="root_noksu";
-      break;
-      ;;
-  esac
-  done
-  sleep 1;
-
-  ui_print " " " - DTB CPU Frequency : ";
-  ui_print "  (Vol +)  EFFCPU ";
-  ui_print "  (Vol -)  Default ";
-  while true; do
-  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
-  case $ev in
-    *KEY_VOLUMEUP*)
-      dtb="dtb_effcpu";
-      break;
-      ;;
-    *KEY_VOLUMEDOWN*)
-      dtb="dtb_def";
       break;
       ;;
   esac
@@ -159,15 +141,6 @@ auto_configuration(){
       ;;
     esac
     case "$ZIPFILE" in
-      *effcpu*|*EFFCPU*|*Effcpu*)
-        ui_print "--> Configuring EFFCPUFreq DTB...";
-        dtb="dtb_effcpu";
-      ;;
-      *)
-        dtb="dtb_def";
-      ;;
-    esac
-    case "$ZIPFILE" in
       *5K*|*5k*)
         if [[ "$is_alioth" == "1" ]]; then
           ui_print "--> Configuring Alioth 5000mAh Battery Profile...";
@@ -187,7 +160,7 @@ auto_configuration(){
 # Start installation
 # 
 
-devicename=lmi;
+devicename=munch;
 e404_args="";
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto;
@@ -249,7 +222,7 @@ fi
 
 dump_boot;
 
-patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$dtb,$batt""
+patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$batt""
 
 if [ -d $ramdisk/overlay ]; then
   rm -rf $ramdisk/overlay;
