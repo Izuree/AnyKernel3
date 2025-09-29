@@ -160,19 +160,25 @@ auto_configuration(){
 # Start installation
 # 
 
-devicename=munch;
-e404_args="";
-block=/dev/block/bootdevice/by-name/boot;
-ramdisk_compression=auto;
-
 case "$devicename" in
-  munch|alioth)
+  munch|alioth|pipa)
     is_slot_device=1;
   ;;
   apollo|*mi)
     is_slot_device=0;
   ;;
 esac
+
+e404_args="";
+
+devicename=pipa;
+if [ $is_slot_device == 1 ]; then 
+  block=/dev/block/bootdevice/by-name/vendor_boot;
+else
+  block=/dev/block/bootdevice/by-name/boot;
+fi
+ramdisk_compression=auto;
+patch_vbmeta_flag=auto;
 
 . tools/ak3-core.sh;
 set_perm_recursive 0 0 750 750 $ramdisk/*;
@@ -229,12 +235,3 @@ if [ -d $ramdisk/overlay ]; then
 fi
 
 write_boot;
-
-if [ $is_slot_device == 1 ]; then 
-  block=/dev/block/bootdevice/by-name/vendor_boot;
-  ramdisk_compression=auto;
-  patch_vbmeta_flag=auto;
-  reset_ak;
-  dump_boot;
-  write_boot;
-fi
