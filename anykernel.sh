@@ -1,6 +1,6 @@
 # AnyKernel3 Ramdisk Mod Script
 # osm0sis @ xda-developers
-
+#
 # E404R kernel custom installer by 113
 # What are you looking for ?
 
@@ -160,28 +160,29 @@ auto_configuration(){
 # Start installation
 # 
 
+# Variables
+devicename=munch;
 case "$devicename" in
   munch|alioth|pipa)
+    block=/dev/block/bootdevice/by-name/vendor_boot;
     is_slot_device=1;
   ;;
   apollo|*mi)
+    block=/dev/block/bootdevice/by-name/boot;
     is_slot_device=0;
   ;;
 esac
 
-e404_args="";
+ramdisk_compression=auto
+patch_vbmeta_flag=auto
+no_block_display=1
 
-devicename=pipa;
-if [ $is_slot_device == 1 ]; then 
-  block=/dev/block/bootdevice/by-name/vendor_boot;
-else
-  block=/dev/block/bootdevice/by-name/boot;
-fi
-ramdisk_compression=auto;
-patch_vbmeta_flag=auto;
+# Import AnyKernel core functions
+. tools/ak3-core.sh
 
-. tools/ak3-core.sh;
-set_perm_recursive 0 0 750 750 $ramdisk/*;
+#
+# Main Installation Logic
+#
 
 if [[ -f /vendor/OemPorts10T.prop ]] ||
   [[ -f /vendor/etc/init/OemPorts10T.rc ]]; then
@@ -219,19 +220,16 @@ sleep 0.5;
 ui_print " Installing... ";
 
 mv *-Image* $home/Image;
-mv *-dtbo.img $home/dtbo.img;
 mv *-dtb $home/dtb;
+# mv *-dtbo.img $home/dtbo.img; (not needed)
+
+patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$batt""
 
 if [ ! -f /vendor/etc/task_profiles.json ]; then
 	ui_print " " " Note : Uclamp Task Profile Not Found ! " " ";
 fi
 
 dump_boot;
-
-patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$batt""
-
-if [ -d $ramdisk/overlay ]; then
-  rm -rf $ramdisk/overlay;
-fi
-
 write_boot;
+
+ui_print " " "--- Installation Complete ! --- ";
