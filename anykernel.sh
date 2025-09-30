@@ -58,7 +58,7 @@ manual_configuration(){
       ;;
   esac
   done
-  sleep 1;
+  sleep 0.5;
 
   ui_print " " " - KernelSU Root :";
   ui_print "  (Vol +)  Yes ";
@@ -67,6 +67,23 @@ manual_configuration(){
   ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
   case $ev in
     *KEY_VOLUMEUP*)
+      sleep 0.5;
+        ui_print " " " - SUSFS4KSU :";
+        ui_print "  (Vol +)  Yes ";
+        ui_print "  (Vol -)  No/Default ";
+        while true; do
+        ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+        case $ev in
+          *KEY_VOLUMEUP*)
+            rm -f *-NOSUSFS-Image;
+            break;
+            ;;
+          *KEY_VOLUMEDOWN*)
+            rm -f *-SUSFS-Image;
+            break;
+            ;;
+        esac
+        done
       root="root_ksu";
       break;
       ;;
@@ -76,7 +93,7 @@ manual_configuration(){
       ;;
   esac
   done
-  sleep 1;
+  sleep 0.5;
 
   if [[ "$devicename" == "alioth" ]]; then
     ui_print " " " - Battery Profile :";
@@ -86,6 +103,7 @@ manual_configuration(){
     ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
     case $ev in
       *KEY_VOLUMEUP*)
+        ui_print "--> Skipping KernelSU, Configuring...";
         batt="batt_5k";
         break;
         ;;
@@ -95,16 +113,17 @@ manual_configuration(){
         ;;
     esac
     done
-    sleep 1;
+    sleep 0.5;
   else
     batt="batt_def";
   fi
+  sleep 0.5;
   ui_print " " " Manual Configuration Done ! ";
 }
 
 auto_configuration(){
-  sleep 0.5;
   ui_print " " " Running Auto Configuration... ";
+  sleep 0.5;
   miprops="$(file_getprop /vendor/build.prop "ro.vendor.miui.build.region")";
   if [[ "$oplus" == "1" ]]; then
     ui_print "--> OPLUS Port ROM detected, Configuring...";
@@ -136,16 +155,27 @@ auto_configuration(){
           ui_print "--> KernelSU detected, Configuring...";
           root="root_ksu";
         else
+          ui_print "--> Skip KernelSU, Configuring...";
           root="root_noksu";
+        fi
+        if [[ -d /data/adb/susfs4ksu ]] && [[ -d /data/adb/ksu/susfs4ksu ]] && [[ -d /data/adb/modules/susfs4ksu ]]; then
+          ui_print "--> SUSFS4KSU detected, Configuring...";
+          rm -f *-NOSUSFS-Image;
+        else
+          ui_print "--> Skip SUSFS4KSU, Configuring...";
+          rm -f *-SUSFS-Image;
         fi
       ;;
     esac
+
+    sleep 0.5;
     case "$ZIPFILE" in
       *5K*|*5k*)
         if [[ "$is_alioth" == "1" ]]; then
-          ui_print "--> Configuring Alioth 5000mAh Battery Profile...";
+          ui_print "--> Alioth 5000mAh Battery Profile, Configuring...";
           batt="batt_5k";
         else
+          ui_print "--> Default Battery Profile, Configuring...";
           batt="batt_def";
         fi
       ;;
@@ -153,6 +183,7 @@ auto_configuration(){
         batt="batt_def";
       ;;
     esac
+    sleep 0.5;
     ui_print " " " Auto Configuration Done ! ";
 }
 
@@ -161,18 +192,16 @@ auto_configuration(){
 # 
 
 # Variables
-devicename=munch;
+devicename=alioth;
 case "$devicename" in
   munch|alioth|pipa)
-    block=/dev/block/bootdevice/by-name/vendor_boot;
     is_slot_device=1;
   ;;
-  apollo|*mi)
-    block=/dev/block/bootdevice/by-name/boot;
+  apollo|lmi)
     is_slot_device=0;
   ;;
 esac
-
+block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto
 patch_vbmeta_flag=auto
 no_block_display=1
@@ -219,7 +248,7 @@ fi
 sleep 0.5;
 ui_print " Installing... ";
 
-mv *-Image* $home/Image;
+mv *-Image $home/Image;
 mv *-dtb $home/dtb;
 # mv *-dtbo.img $home/dtbo.img; (not needed)
 
@@ -231,5 +260,12 @@ fi
 
 dump_boot;
 write_boot;
+
+if [ $is_slot_device == 1 ]; then 
+  block=/dev/block/bootdevice/by-name/vendor_boot;
+  reset_ak;
+  dump_boot;
+  write_boot;
+fi
 
 ui_print " " "--- Installation Complete ! --- ";
