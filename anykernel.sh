@@ -192,7 +192,7 @@ auto_configuration(){
 # 
 
 # Variables
-devicename=alioth;
+devicename=lmi;
 case "$devicename" in
   munch|alioth|pipa)
     is_slot_device=1;
@@ -204,7 +204,6 @@ esac
 block=/dev/block/bootdevice/by-name/boot;
 ramdisk_compression=auto
 patch_vbmeta_flag=auto
-no_block_display=1
 
 # Import AnyKernel core functions
 . tools/ak3-core.sh
@@ -250,7 +249,7 @@ ui_print " Installing... ";
 
 mv *-Image $home/Image;
 mv *-dtb $home/dtb;
-# mv *-dtbo.img $home/dtbo.img; (not needed)
+mv *-dtbo.img $home/dtbo.img;
 
 patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$batt""
 
@@ -263,9 +262,11 @@ write_boot;
 
 if [ $is_slot_device == 1 ]; then 
   block=/dev/block/bootdevice/by-name/vendor_boot;
+  ramdisk_compression=auto;
+  patch_vbmeta_flag=auto;
   reset_ak;
   dump_boot;
   write_boot;
 fi
 
-ui_print " " "--- Installation Complete ! --- ";
+ui_print " " "--- Installation Done ! --- ";
