@@ -75,10 +75,12 @@ manual_configuration(){
         ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
         case $ev in
           *KEY_VOLUMEUP*)
+            susfs="susfs";
             rm -f *-NOSUSFS-Image;
             break;
             ;;
           *KEY_VOLUMEDOWN*)
+            susfs="nosusfs";
             rm -f *-SUSFS-Image;
             break;
             ;;
@@ -95,6 +97,24 @@ manual_configuration(){
   done
   sleep 0.5;
 
+  ui_print " " " - DTB CPU Frequency : ";
+  ui_print "  (Vol +)  EFFCPU ";
+  ui_print "  (Vol -)  Default ";
+  while true; do
+  ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
+  case $ev in
+    *KEY_VOLUMEUP*)
+      dtb="dtb_effcpu";
+      break;
+      ;;
+    *KEY_VOLUMEDOWN*)
+      dtb="dtb_def";
+      break;
+      ;;
+  esac
+  done
+  sleep 0.5;
+  
   if [[ "$devicename" == "alioth" ]]; then
     ui_print " " " - Battery Profile :";
     ui_print "  (Vol +)  5000 mAh (Vol +) ";
@@ -103,7 +123,7 @@ manual_configuration(){
     ev=$(getevent -lt 2>/dev/null | grep -m1 "KEY_VOLUME.*DOWN")
     case $ev in
       *KEY_VOLUMEUP*)
-        ui_print "--> Skipping KernelSU, Configuring...";
+        ui_print "--> Alioth 5K mAh Battery, Configuring...";
         batt="batt_5k";
         break;
         ;;
@@ -136,6 +156,7 @@ auto_configuration(){
           ui_print "--> Miui/HyperOS ROM detected, Configuring...";
           rom="rom_oem";
           dtbo=dtbo_oem;
+          break;
         ;;
     esac
   else
@@ -149,6 +170,7 @@ auto_configuration(){
       *ksu*|*KSU*|*Ksu*)
         ui_print "--> KernelSU detected, Configuring...";
         root="root_ksu";
+        break;
       ;;
       *)
         if [[ -d /data/adb/ksu ]] && [[ -f /data/adb/ksud ]]; then
@@ -160,11 +182,28 @@ auto_configuration(){
         fi
         if [[ -d /data/adb/susfs4ksu ]] && [[ -d /data/adb/ksu/susfs4ksu ]] && [[ -d /data/adb/modules/susfs4ksu ]]; then
           ui_print "--> SUSFS4KSU detected, Configuring...";
+          susfs="susfs";
           rm -f *-NOSUSFS-Image;
         else
           ui_print "--> Skip SUSFS4KSU, Configuring...";
+          susfs="nosusfs";
           rm -f *-SUSFS-Image;
         fi
+        break;
+      ;;
+    esac
+
+    sleep 0.5;
+    case "$ZIPFILE" in
+      *effcpu*|*EFFCPU*|*Effcpu*)
+        ui_print "--> Configuring EFFCPUFreq DTB...";
+        dtb="dtb_effcpu";
+        break;
+      ;;
+      *)
+        ui_print "--> Configuring Default DTB...";
+        dtb="dtb_def";
+        break;
       ;;
     esac
 
@@ -178,9 +217,11 @@ auto_configuration(){
           ui_print "--> Default Battery Profile, Configuring...";
           batt="batt_def";
         fi
+        break;
       ;;
       *)
         batt="batt_def";
+        break;
       ;;
     esac
     sleep 0.5;
@@ -192,7 +233,7 @@ auto_configuration(){
 # 
 
 # Variables
-devicename=lmi;
+devicename=alioth;
 case "$devicename" in
   munch|alioth|pipa)
     is_slot_device=1;
@@ -251,13 +292,14 @@ mv *-Image $home/Image;
 mv *-dtb $home/dtb;
 mv *-dtbo.img $home/dtbo.img;
 
-patch_cmdline "e404_args" "e404_args="$root,$rom,$dtbo,$batt""
-
 if [ ! -f /vendor/etc/task_profiles.json ]; then
 	ui_print " " " Note : Uclamp Task Profile Not Found ! " " ";
 fi
 
 dump_boot;
+
+patch_cmdline "e404_args" "e404_args="$root,$susfs,$rom,$dtbo,$dtb,$batt""
+
 write_boot;
 
 if [ $is_slot_device == 1 ]; then 
