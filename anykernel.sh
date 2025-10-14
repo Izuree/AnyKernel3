@@ -141,7 +141,7 @@ configure_auto() {
     ui_print "--> KernelSU is detected, configuring..."
     root="root_ksu"
     sleep 0.5
-    if [[ -d /data/adb/susfs4ksu ]] || [[ -d /data/adb/modules/susfs4ksu ]]; then
+    if [[ -d /data/adb/susfs4ksu ]] && [[ -d /data/adb/modules/susfs4ksu ]]; then
       ui_print "--> SUSFS4KSU is detected, configuring..."
       susfs="susfs"
     else
@@ -198,7 +198,7 @@ choose_config_mode() {
 # Install begins here
 # 
 
-devicename=lmi;
+devicename=munch;
 case "$devicename" in
   munch|alioth|pipa)
     is_slot_device=1;
@@ -231,6 +231,12 @@ if [[ "$SIDELOAD" == "1" ]]; then
   configure_manual
 else
   choose_config_mode
+fi
+
+if [[ "$susfs" == "susfs" ]]; then
+  rm -f *NOSUSFS-Image
+else
+  rm -f *SUSFS-Image
 fi
 
 mv *-Image $home/Image
