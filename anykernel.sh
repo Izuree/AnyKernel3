@@ -234,9 +234,9 @@ else
 fi
 
 if [[ "$susfs" == "susfs" ]]; then
-  rm -f *NOSUSFS-Image
+  rm -f *-NOSUSFS-Image
 else
-  rm -f *SUSFS-Image
+  rm -f *-SUSFS-Image
 fi
 
 mv *-Image $home/Image
