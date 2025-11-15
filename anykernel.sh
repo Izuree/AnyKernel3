@@ -76,16 +76,9 @@ configure_manual() {
   case "$root_sel" in
     *KernelSU*)
       root="root_ksu"
-      select_option "SUSFS4KSU Support" "Enabled" "Disabled"
-      susfs_sel="$SELECT_RESULT"
-      case "$susfs_sel" in
-        *Enabled*) susfs="susfs" ;;
-        *) susfs="nosusfs" ;;
-      esac
       ;;
     *)
       root="root_noksu"
-      susfs="nosusfs"
       ;;
   esac
 
@@ -141,18 +134,9 @@ configure_auto() {
     ui_print "--> KernelSU is detected, configuring..."
     root="root_ksu"
     sleep 0.5
-    if [[ -d /data/adb/susfs4ksu ]] && [[ -d /data/adb/modules/susfs4ksu ]]; then
-      ui_print "--> SUSFS4KSU is detected, configuring..."
-      susfs="susfs"
-    else
-      ui_print "--> SUSFS4KSU not detected, skipping..."
-      susfs="nosusfs"
-    fi
   else
     ui_print "--> KernelSU not detected, skipping..."
-    ui_print "--> SUSFS4KSU also skipped as well..."
     root="root_noksu"
-    susfs="nosusfs"
   fi
 
   sleep 0.5
@@ -233,12 +217,6 @@ else
   choose_config_mode
 fi
 
-if [[ "$susfs" == "susfs" ]]; then
-  rm -f *-NOSUSFS-Image
-else
-  rm -f *-SUSFS-Image
-fi
-
 mv *-Image $home/Image
 mv *-dtb $home/dtb
 mv *-dtbo.img $home/dtbo.img
@@ -246,8 +224,8 @@ mv *-dtbo.img $home/dtbo.img
 dump_boot
 
 ui_print "--> Applying cmdline..."
-ui_print " e404_args=$root,$susfs,$rom,$dtbo,$dtb,$batt"
-patch_cmdline "e404_args" "e404_args=$root,$susfs,$rom,$dtbo,$dtb,$batt"
+ui_print " e404_args=$root,$rom,$dtbo,$dtb,$batt"
+patch_cmdline "e404_args" "e404_args=$root,$rom,$dtbo,$dtb,$batt"
 
 ui_print "--> Installing... "
 
